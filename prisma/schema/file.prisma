@@ -1,0 +1,15 @@
+model File {
+  id        String   @id @default(uuid())
+  fileName  String   @map("file_name")
+  fileSize  BigInt   @map("file_size")
+  mimeType  String   @map("mime_type")
+  checksum  String
+  url       String
+  status    String   @default("COMPLETED")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([checksum])
+  @@map("files")
+}

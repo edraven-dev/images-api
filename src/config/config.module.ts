@@ -10,6 +10,6 @@ import configuration from './configuration';
     }),
   ],
   providers: [ConfigService],
-  exports: [ConfigService],
+  exports: [NestConfigModule],
 })
 export class ConfigModule {}

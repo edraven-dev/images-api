@@ -16,6 +16,14 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "@images-api/shared": [
+        "libs/shared/src"
+      ],
+      "@images-api/shared/*": [
+        "libs/shared/src/*"
+      ]
+    }
   }
 }
