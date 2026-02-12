@@ -1,11 +1,9 @@
 /**
- * File upload status
+ * Storage provider types
  */
-export enum FileStatus {
-  PENDING = 'PENDING',
-  PROCESSING = 'PROCESSING',
-  COMPLETED = 'COMPLETED',
-  FAILED = 'FAILED',
+export enum StorageProvider {
+  LOCAL = 'LOCAL',
+  S3 = 'S3',
 }
 
 /**
@@ -43,9 +41,9 @@ export interface File {
   url: string;
 
   /**
-   * Upload/processing status
+   * Storage provider used for this file
    */
-  status: FileStatus;
+  storageProvider: StorageProvider;
 
   /**
    * Timestamp when the file was created
@@ -68,7 +66,7 @@ export interface CreateFileDto {
   readonly mimeType: string;
   readonly checksum: string;
   readonly url: string;
-  readonly status?: FileStatus;
+  readonly storageProvider: StorageProvider;
 }
 
 /**
@@ -79,5 +77,4 @@ export interface UpdateFileDto {
   readonly fileSize?: bigint;
   readonly mimeType?: string;
   readonly url?: string;
-  readonly status?: FileStatus;
 }

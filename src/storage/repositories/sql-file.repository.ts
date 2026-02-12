@@ -1,5 +1,5 @@
 import type { CreateFileDto, File, FileRepository } from '@images-api/shared/storage';
-import { FileStatus } from '@images-api/shared/storage';
+import { StorageProvider } from '@images-api/shared/storage';
 import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 
@@ -26,7 +26,7 @@ export class SqlFileRepository implements FileRepository {
         mime_type: data.mimeType,
         checksum: data.checksum,
         url: data.url,
-        status: data.status ?? FileStatus.COMPLETED,
+        storage_provider: data.storageProvider,
         created_at: new Date(),
         updated_at: new Date(),
       })
@@ -57,22 +57,22 @@ export class SqlFileRepository implements FileRepository {
   private mapToFile(row: {
     id: string;
     file_name: string;
-    file_size: string; // Kysely returns bigint as string
+    file_size: string;
     mime_type: string;
     checksum: string;
     url: string;
-    status: string; // Database stores as text
+    storage_provider: string;
     created_at: Date;
     updated_at: Date;
   }): File {
     return {
       id: row.id,
       fileName: row.file_name,
-      fileSize: BigInt(row.file_size), // Convert string to BigInt
+      fileSize: BigInt(row.file_size),
       mimeType: row.mime_type,
       checksum: row.checksum,
       url: row.url,
-      status: row.status as FileStatus, // Cast string to FileStatus enum
+      storageProvider: row.storage_provider as StorageProvider,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

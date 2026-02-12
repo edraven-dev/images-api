@@ -1,21 +1,19 @@
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import type { File, StorageService } from '@images-api/shared/storage';
 import { calculateChecksum, FileRepository, StorageConfig, StorageProvider } from '@images-api/shared/storage';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { fileTypeFromBuffer } from 'file-type';
-import { promises as fs } from 'fs';
-import * as path from 'path';
 import { StorageError, StorageErrorCode } from '../errors/storage.error';
 
 /**
- * Local filesystem storage implementation.
- * Stores files in a configurable directory with random UUID-based filenames.
+ * AWS S3 storage implementation.
+ * Stores files in S3 bucket with random UUID-based filenames.
  */
 @Injectable()
-export class LocalStorageService implements StorageService {
-  private readonly logger = new Logger(LocalStorageService.name);
-  private readonly basePath: string;
-  private readonly baseUrl: string;
+export class S3StorageService implements StorageService {
+  private readonly logger = new Logger(S3StorageService.name);
+  private readonly s3Client: S3Client;
 
   constructor(
     @Inject(StorageConfig)
@@ -23,12 +21,20 @@ export class LocalStorageService implements StorageService {
     @Inject(FileRepository)
     private readonly fileRepository: FileRepository,
   ) {
-    this.basePath = config.localStorage.basePath;
-    this.baseUrl = config.localStorage.baseUrl;
+    this.s3Client = new S3Client({
+      endpoint: this.getEndpoint(),
+      region: config.s3.region,
+      credentials: {
+        accessKeyId: config.s3.accessKeyId,
+        secretAccessKey: config.s3.secretAccessKey,
+      },
+    });
+
+    this.logger.log(`S3StorageService initialized with bucket: ${this.config.s3.bucket}`);
   }
 
   /**
-   * Upload a file to local storage and return its entity with metadata.
+   * Upload a file to S3 and return its entity with metadata.
    * Checks for existing files with the same checksum to avoid duplicates.
    * Generates a random UUID-based filename with appropriate extension.
    */
@@ -58,15 +64,19 @@ export class LocalStorageService implements StorageService {
       const fileName = `${fileId}.${fileType.extension}`;
       const fileSize = BigInt(buffer.length);
 
-      // Determine storage path
-      const filePath = this.getFilePath(fileName);
+      // Upload to S3
+      const command = new PutObjectCommand({
+        Bucket: this.config.s3.bucket,
+        Key: fileName,
+        Body: buffer,
+        ContentType: fileType.mimeType,
+        Metadata: {
+          checksum,
+          originalSize: buffer.length.toString(),
+        },
+      });
 
-      // Ensure directory exists
-      const directory = path.dirname(filePath);
-      await fs.mkdir(directory, { recursive: true });
-
-      // Write file to disk
-      await fs.writeFile(filePath, buffer);
+      await this.s3Client.send(command);
 
       // Construct URL
       const url = this.getFileUrl(fileName);
@@ -79,10 +89,10 @@ export class LocalStorageService implements StorageService {
         mimeType: fileType.mimeType,
         checksum,
         url,
-        storageProvider: StorageProvider.LOCAL,
+        storageProvider: StorageProvider.S3,
       });
 
-      this.logger.log(`File uploaded successfully: ${fileId}`);
+      this.logger.log(`File uploaded to S3 successfully: ${fileId}`);
 
       return file;
     } catch (error) {
@@ -91,42 +101,47 @@ export class LocalStorageService implements StorageService {
       }
 
       const err = error as Error;
-      this.logger.error(`Failed to upload file: ${err.message}`, err.stack);
+      this.logger.error(`Failed to upload file to S3: ${err.message}`, err.stack);
       throw new StorageError('Failed to upload file', StorageErrorCode.UPLOAD_FAILED, err);
     }
   }
 
   /**
-   * Get the full file system path for a file.
+   * Get the full S3 endpoint URL.
    */
-  private getFilePath(fileName: string): string {
-    return path.join(this.basePath, fileName);
+  private getEndpoint(): string {
+    return `https://s3.${this.config.s3.region}.${this.config.s3.endpointDomain}`;
   }
 
   /**
-   * Get the public URL for a file.
+   * Get the full S3 URL for a file.
    */
   private getFileUrl(fileName: string): string {
-    return `${this.baseUrl}/${fileName}`;
+    return `https://${this.config.s3.bucket}.s3.${this.config.s3.region}.${this.config.s3.endpointDomain}/${fileName}`;
   }
 
   /**
-   * Detect file type from buffer.
-   * Throws error if file type cannot be determined.
+   * Detect file type using file-type library.
+   * Throws UNSUPPORTED_FILE_TYPE error if detection fails.
    */
   private async detectFileType(buffer: Buffer): Promise<{ mimeType: string; extension: string }> {
-    const result = await fileTypeFromBuffer(buffer);
+    const fileType = await fileTypeFromBuffer(buffer);
 
-    if (!result || !result.mime || !result.ext) {
-      throw new StorageError(
-        'Unable to detect file type. File format not supported or invalid.',
-        StorageErrorCode.UNSUPPORTED_FILE_TYPE,
-      );
+    if (!fileType) {
+      throw new StorageError('Unable to detect file type', StorageErrorCode.UNSUPPORTED_FILE_TYPE);
+    }
+
+    if (!fileType.mime) {
+      throw new StorageError('File type has no mime type', StorageErrorCode.UNSUPPORTED_FILE_TYPE);
+    }
+
+    if (!fileType.ext) {
+      throw new StorageError('File type has no extension', StorageErrorCode.UNSUPPORTED_FILE_TYPE);
     }
 
     return {
-      mimeType: result.mime,
-      extension: result.ext,
+      mimeType: fileType.mime,
+      extension: fileType.ext,
     };
   }
 }

@@ -1,5 +1,5 @@
 import type { CreateFileDto } from '@images-api/shared/storage';
-import { FileStatus } from '@images-api/shared/storage';
+import { StorageProvider } from '@images-api/shared/storage';
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DatabaseService } from '../../database/database.service';
@@ -70,7 +70,7 @@ describe('SqlFileRepository', () => {
         mimeType: 'image/jpeg',
         checksum: 'a'.repeat(64),
         url: 'http://localhost:3000/uploads/test-file.jpg',
-        status: FileStatus.COMPLETED,
+        storageProvider: StorageProvider.LOCAL,
       };
 
       const mockDbRow = {
@@ -80,7 +80,7 @@ describe('SqlFileRepository', () => {
         mime_type: createDto.mimeType,
         checksum: createDto.checksum,
         url: createDto.url,
-        status: 'COMPLETED',
+        storage_provider: 'LOCAL',
         created_at: new Date(),
         updated_at: new Date(),
       };
@@ -97,7 +97,7 @@ describe('SqlFileRepository', () => {
         mime_type: createDto.mimeType,
         checksum: createDto.checksum,
         url: createDto.url,
-        status: FileStatus.COMPLETED,
+        storage_provider: StorageProvider.LOCAL,
         created_at: expect.any(Date),
         updated_at: expect.any(Date),
       });
@@ -108,43 +108,10 @@ describe('SqlFileRepository', () => {
         mimeType: createDto.mimeType,
         checksum: createDto.checksum,
         url: createDto.url,
-        status: FileStatus.COMPLETED,
+        storageProvider: StorageProvider.LOCAL,
         createdAt: mockDbRow.created_at,
         updatedAt: mockDbRow.updated_at,
       });
-    });
-
-    it('should use default status COMPLETED when not provided', async () => {
-      const createDto: CreateFileDto = {
-        id: 'test-uuid',
-        fileName: 'test-file.jpg',
-        fileSize: BigInt(1024),
-        mimeType: 'image/jpeg',
-        checksum: 'a'.repeat(64),
-        url: 'http://localhost:3000/uploads/test-file.jpg',
-      };
-
-      const mockDbRow = {
-        id: createDto.id,
-        file_name: createDto.fileName,
-        file_size: '1024',
-        mime_type: createDto.mimeType,
-        checksum: createDto.checksum,
-        url: createDto.url,
-        status: 'COMPLETED',
-        created_at: new Date(),
-        updated_at: new Date(),
-      };
-
-      mockDb.executeTakeFirstOrThrow.mockResolvedValue(mockDbRow);
-
-      await repository.create(createDto);
-
-      expect(mockDb.values).toHaveBeenCalledWith(
-        expect.objectContaining({
-          status: FileStatus.COMPLETED,
-        }),
-      );
     });
   });
 
@@ -158,7 +125,7 @@ describe('SqlFileRepository', () => {
         mime_type: 'image/jpeg',
         checksum,
         url: 'http://localhost:3000/uploads/test-file.jpg',
-        status: 'COMPLETED',
+        storage_provider: 'LOCAL',
         created_at: new Date(),
         updated_at: new Date(),
       };
@@ -176,7 +143,7 @@ describe('SqlFileRepository', () => {
         mimeType: 'image/jpeg',
         checksum,
         url: 'http://localhost:3000/uploads/test-file.jpg',
-        status: FileStatus.COMPLETED,
+        storageProvider: StorageProvider.LOCAL,
         createdAt: mockDbRow.created_at,
         updatedAt: mockDbRow.updated_at,
       });
