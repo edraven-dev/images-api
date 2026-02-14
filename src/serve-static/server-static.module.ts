@@ -12,13 +12,14 @@ import { ConfigModule } from '../config/config.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const storageConfig = configService.getOrThrow<StorageConfig>('storage');
+
         // Extract URL path from baseUrl (e.g., "http://localhost:3000/uploads" -> "/uploads")
-        const baseUrl = new URL(storageConfig.baseUrl);
+        const baseUrl = new URL(storageConfig.localStorage.baseUrl);
         const serveRoot = baseUrl.pathname;
 
         return [
           {
-            rootPath: join(process.cwd(), storageConfig.basePath),
+            rootPath: join(process.cwd(), storageConfig.localStorage.basePath),
             serveRoot,
             serveStaticOptions: {
               index: false, // Don't serve index.html

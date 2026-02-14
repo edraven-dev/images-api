@@ -11,6 +11,7 @@ export type File = {
   checksum: string;
   url: string;
   status: Generated<string>;
+  storage_provider: Generated<string>;
   created_at: Generated<Timestamp>;
   updated_at: Timestamp;
 };

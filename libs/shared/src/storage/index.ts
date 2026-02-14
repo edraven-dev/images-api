@@ -1,3 +1,4 @@
+export * from './checksum.helper';
 export * from './file-repository.interface';
 export * from './file.entity';
 export * from './storage-config.interface';
