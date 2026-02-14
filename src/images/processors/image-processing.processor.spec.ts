@@ -1,12 +1,13 @@
 import { ImageStatus } from '@images-api/shared/images';
+import { ImageProcessingFailedEvent, ImageStoredEvent } from '@images-api/shared/images/events';
 import { ImageProcessingJob, ImageProcessingResult } from '@images-api/shared/images/queues';
 import { StorageService } from '@images-api/shared/storage';
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Job } from 'bullmq';
 import { ImageProcessingService } from '../services/image-processing.service';
 import { ImagesService } from '../services/images.service';
-import { ImageEventType, SSEService } from '../services/sse.service';
 import { ImageProcessingProcessor } from './image-processing.processor';
 
 describe('ImageProcessingProcessor', () => {
@@ -14,7 +15,7 @@ describe('ImageProcessingProcessor', () => {
   let mockStorageService: jest.Mocked<StorageService>;
   let mockImageProcessingService: jest.Mocked<ImageProcessingService>;
   let mockImagesService: jest.Mocked<ImagesService>;
-  let mockSSEService: jest.Mocked<SSEService>;
+  let mockEventEmitter: jest.Mocked<EventEmitter2>;
 
   const mockImageId = '123e4567-e89b-12d3-a456-426614174000';
   const mockFileUrl = 'https://storage.example.com/original.jpg';
@@ -37,8 +38,8 @@ describe('ImageProcessingProcessor', () => {
       updateImageProcessingResult: jest.fn(),
     } as any;
 
-    mockSSEService = {
-      sendEvent: jest.fn().mockResolvedValue(undefined),
+    mockEventEmitter = {
+      emit: jest.fn(),
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -57,8 +58,8 @@ describe('ImageProcessingProcessor', () => {
           useValue: mockImagesService,
         },
         {
-          provide: SSEService,
-          useValue: mockSSEService,
+          provide: EventEmitter2,
+          useValue: mockEventEmitter,
         },
       ],
     }).compile();
@@ -251,15 +252,13 @@ describe('ImageProcessingProcessor', () => {
         status: ImageStatus.STORED,
       });
 
-      expect(mockSSEService.sendEvent).toHaveBeenCalledWith(mockImageId, {
-        type: ImageEventType.COMPLETED,
-        imageId: mockImageId,
-        message: 'Image processed successfully',
-        url: mockProcessedFileUrl,
-      });
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        ImageStoredEvent.eventName,
+        new ImageStoredEvent(mockImageId, mockProcessedFileUrl),
+      );
     });
 
-    it('should handle SSE event sending failure gracefully', async () => {
+    it('should emit event even if EventEmitter throws', async () => {
       const job = {
         data: {
           imageId: mockImageId,
@@ -275,18 +274,10 @@ describe('ImageProcessingProcessor', () => {
         },
       } as Job<ImageProcessingJob, ImageProcessingResult>;
 
-      const sseError = new Error('SSE connection failed');
-      mockSSEService.sendEvent.mockRejectedValue(sseError);
-
       await processor.onCompleted(job);
 
       expect(mockImagesService.updateImageProcessingResult).toHaveBeenCalled();
-      expect(mockSSEService.sendEvent).toHaveBeenCalled();
-      // Should not throw error, just log it
-      expect(Logger.prototype.error).toHaveBeenCalledWith(
-        expect.stringContaining(`Failed to send SSE event for image ${mockImageId}`),
-        expect.anything(),
-      );
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(ImageStoredEvent.eventName, expect.any(ImageStoredEvent));
     });
   });
 
@@ -308,11 +299,10 @@ describe('ImageProcessingProcessor', () => {
         status: ImageStatus.FAILED,
       });
 
-      expect(mockSSEService.sendEvent).toHaveBeenCalledWith(mockImageId, {
-        type: ImageEventType.FAILED,
-        imageId: mockImageId,
-        message: 'Processing failed',
-      });
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        ImageProcessingFailedEvent.eventName,
+        new ImageProcessingFailedEvent(mockImageId, 'Processing failed'),
+      );
     });
 
     it('should handle undefined job gracefully', async () => {
@@ -321,7 +311,7 @@ describe('ImageProcessingProcessor', () => {
       await processor.onFailed(undefined, error);
 
       expect(mockImagesService.updateImageProcessingResult).not.toHaveBeenCalled();
-      expect(mockSSEService.sendEvent).not.toHaveBeenCalled();
+      expect(mockEventEmitter.emit).not.toHaveBeenCalled();
       expect(Logger.prototype.error).toHaveBeenCalledWith(
         expect.stringContaining('Job failed without job data'),
         expect.anything(),
@@ -343,16 +333,14 @@ describe('ImageProcessingProcessor', () => {
 
       await processor.onFailed(job, error);
 
-      expect(mockSSEService.sendEvent).toHaveBeenCalledWith(mockImageId, {
-        type: ImageEventType.FAILED,
-        imageId: mockImageId,
-        message: 'Image processing failed',
-      });
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        ImageProcessingFailedEvent.eventName,
+        new ImageProcessingFailedEvent(mockImageId, 'Image processing failed'),
+      );
     });
 
-    it('should handle SSE event sending failure gracefully on failure', async () => {
+    it('should emit failure event when job fails', async () => {
       const error = new Error('Processing failed');
-      const sseError = new Error('SSE connection failed');
 
       const job = {
         data: {
@@ -363,16 +351,12 @@ describe('ImageProcessingProcessor', () => {
         },
       } as Job<ImageProcessingJob>;
 
-      mockSSEService.sendEvent.mockRejectedValue(sseError);
-
       await processor.onFailed(job, error);
 
       expect(mockImagesService.updateImageProcessingResult).toHaveBeenCalled();
-      expect(mockSSEService.sendEvent).toHaveBeenCalled();
-      // Should not throw error, just log it
-      expect(Logger.prototype.error).toHaveBeenCalledWith(
-        expect.stringContaining(`Failed to send SSE event for image ${mockImageId}`),
-        expect.anything(),
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        ImageProcessingFailedEvent.eventName,
+        expect.any(ImageProcessingFailedEvent),
       );
     });
   });

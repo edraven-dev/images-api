@@ -4,10 +4,10 @@ import { StorageConfig, StorageProvider } from '@images-api/shared/storage';
 import { getQueueToken } from '@nestjs/bullmq';
 import { Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Queue } from 'bullmq';
 import { ImagesService } from './images.service';
-import { SSEService } from './sse.service';
 
 jest.mock('file-type');
 
@@ -17,7 +17,7 @@ describe('ImagesService', () => {
   let mockConfigService: jest.Mocked<ConfigService>;
   let mockQueue: jest.Mocked<Queue>;
   let mockRepository: jest.Mocked<ImageRepository>;
-  let mockSSEService: jest.Mocked<SSEService>;
+  let mockEventEmitter: jest.Mocked<EventEmitter2>;
 
   const mockImage = {
     id: '123e4567-e89b-12d3-a456-426614174000',
@@ -81,8 +81,8 @@ describe('ImagesService', () => {
       exists: jest.fn(),
     } as any;
 
-    mockSSEService = {
-      emitImageEvent: jest.fn(),
+    mockEventEmitter = {
+      emit: jest.fn(),
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -109,8 +109,8 @@ describe('ImagesService', () => {
           useValue: mockConfigService,
         },
         {
-          provide: SSEService,
-          useValue: mockSSEService,
+          provide: EventEmitter2,
+          useValue: mockEventEmitter,
         },
       ],
     }).compile();

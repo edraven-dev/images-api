@@ -10,7 +10,6 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
-  Res,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -20,7 +19,6 @@ import {
   ApiBadRequestResponse,
   ApiBody,
   ApiConsumes,
-  ApiExcludeEndpoint,
   ApiExtraModels,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -30,13 +28,11 @@ import {
   ApiTags,
   getSchemaPath,
 } from '@nestjs/swagger';
-import { Response } from 'express';
 import { ImageResponseDto, PaginatedImageResponseDto } from '../dto/image-response.dto';
 import { ListImagesQueryDto } from '../dto/list-images-query.dto';
 import { UploadImageDto } from '../dto/upload-image.dto';
 import { UploadResponseDto } from '../dto/upload-response.dto';
 import { ImagesService } from '../services/images.service';
-import { SSEService } from '../services/sse.service';
 import { UploadImageService } from '../services/upload-image.service';
 
 /**
@@ -50,7 +46,6 @@ export class ImagesController {
   constructor(
     private readonly imagesService: ImagesService,
     private readonly uploadImageService: UploadImageService,
-    private readonly sseService: SSEService,
   ) {}
 
   /**
@@ -63,7 +58,7 @@ export class ImagesController {
     summary: 'Upload an image',
     description:
       'Upload an image file with resize parameters. Processing happens asynchronously. ' +
-      'Use GET /images/events/:id to receive real-time updates about processing status.',
+      'Use GET /notifications/images/events/:id to receive real-time updates about processing status.',
   })
   @ApiConsumes('multipart/form-data')
   @ApiExtraModels(UploadImageDto)
@@ -139,37 +134,5 @@ export class ImagesController {
   getImage(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<ImageResponseDto> {
     this.logger.log(`Get image request: ${id}`);
     return this.imagesService.findById(id);
-  }
-
-  /**
-   * Server-Sent Events endpoint for image processing status.
-   */
-  @Get('events/:id')
-  @ApiExcludeEndpoint()
-  imageEvents(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string, @Res() response: Response): void {
-    this.logger.log(`SSE client connected for image ${id}`);
-
-    // Setup SSE headers
-    response.setHeader('Content-Type', 'text/event-stream');
-    response.setHeader('Cache-Control', 'no-cache');
-    response.setHeader('Connection', 'keep-alive');
-
-    // Register client
-    this.sseService.addClient(id, response);
-
-    // Keep connection alive
-    const keepAliveInterval = setInterval(() => {
-      try {
-        response.write(':keep-alive\n\n');
-      } catch {
-        clearInterval(keepAliveInterval);
-      }
-    }, 15000); // Send keep-alive every 15 seconds
-
-    // Cleanup on disconnect
-    response.on('close', () => {
-      clearInterval(keepAliveInterval);
-      this.logger.log(`SSE client disconnected for image ${id}`);
-    });
   }
 }

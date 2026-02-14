@@ -2,18 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { Response } from 'express';
 
 /**
- * Image processing event types
+ * SSE event data sent to clients
  */
-export enum ImageEventType {
-  COMPLETED = 'completed',
-  FAILED = 'failed',
-}
-
-/**
- * Image processing event
- */
-export interface ImageEvent {
-  type: ImageEventType;
+export interface SSEEventData {
+  type: 'completed' | 'failed';
   imageId: string;
   message?: string;
   url?: string;
@@ -64,8 +56,10 @@ export class SSEService {
   /**
    * Send an event to all clients listening for a specific image.
    */
-  async sendEvent(imageId: string, event: ImageEvent): Promise<void> {
-    // sleep 20 seconds to simulate processing time and allow clients to connect
+  async sendEvent(imageId: string, event: SSEEventData): Promise<void> {
+    // Wait for clients to connect before sending event
+    // it's for debug purposes only
+    // on production event should be sent immediately
     await new Promise((resolve) => setTimeout(resolve, 30000));
 
     const clients = this.clients.get(imageId);
@@ -90,7 +84,7 @@ export class SSEService {
     });
 
     // Clean up clients after sending terminal events (completed/failed)
-    if (event.type === ImageEventType.COMPLETED || event.type === ImageEventType.FAILED) {
+    if (event.type === 'completed' || event.type === 'failed') {
       this.logger.log(`Terminal event sent for image ${imageId}, cleaning up clients`);
       clients.forEach((response) => {
         try {

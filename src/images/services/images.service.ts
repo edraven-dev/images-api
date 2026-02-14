@@ -7,10 +7,11 @@ import {
   ImageWithOriginalFile,
   UpdateImageDto,
 } from '@images-api/shared/images';
+import { ImageStoredEvent } from '@images-api/shared/images/events';
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ImageResponseDto, PaginatedImageResponseDto } from '../dto/image-response.dto';
 import { ListImagesQueryDto } from '../dto/list-images-query.dto';
-import { ImageEventType, SSEService } from './sse.service';
 
 /**
  * Service for managing images.
@@ -23,7 +24,7 @@ export class ImagesService {
   constructor(
     @Inject(ImageRepository)
     private readonly imageRepository: ImageRepository,
-    private readonly sseService: SSEService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -139,27 +140,20 @@ export class ImagesService {
 
   /**
    * Create an image with the specified status.
-   * If status is STORED, sends SSE event immediately to notify clients.
-   * If status is PROCESSING, events will be sent later by the processor.
+   * If status is STORED, emits ImageStoredEvent to notify listeners.
+   * If status is PROCESSING, events will be emitted later by the processor.
    */
   async createImage(data: CreateImageInput): Promise<Image> {
     const image = await this.imageRepository.create(data);
 
-    // Send SSE event immediately for stored images
+    // Emit event for stored images
     if (data.status === ImageStatus.STORED) {
       const imageWithFile = await this.imageRepository.findByIdWithFile(image.id);
       if (imageWithFile?.processedFile) {
-        this.sseService
-          .sendEvent(image.id, {
-            type: ImageEventType.COMPLETED,
-            imageId: image.id,
-            message: 'Image is ready',
-            url: imageWithFile.processedFile.url,
-          })
-          .catch((err) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            this.logger.error(`Failed to send SSE event for image ${image.id}: ${err.message}`, err.stack);
-          });
+        this.eventEmitter.emit(
+          ImageStoredEvent.eventName,
+          new ImageStoredEvent(image.id, imageWithFile.processedFile.url),
+        );
       }
     }
 

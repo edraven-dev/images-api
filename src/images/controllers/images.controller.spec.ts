@@ -1,8 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Response } from 'express';
 import { ImagesService } from '../services/images.service';
-import { SSEService } from '../services/sse.service';
 import { UploadImageService } from '../services/upload-image.service';
 import { ImagesController } from './images.controller';
 
@@ -10,7 +8,6 @@ describe('ImagesController', () => {
   let controller: ImagesController;
   let mockImagesService: jest.Mocked<ImagesService>;
   let mockUploadImageService: jest.Mocked<UploadImageService>;
-  let mockSSEService: jest.Mocked<SSEService>;
 
   const mockUploadResponse = {
     id: '123e4567-e89b-12d3-a456-426614174000',
@@ -35,13 +32,6 @@ describe('ImagesController', () => {
       upload: jest.fn(),
     } as any;
 
-    mockSSEService = {
-      addClient: jest.fn(),
-      removeClient: jest.fn(),
-      sendEvent: jest.fn(),
-      getClientCount: jest.fn(),
-    } as any;
-
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ImagesController],
       providers: [
@@ -52,10 +42,6 @@ describe('ImagesController', () => {
         {
           provide: UploadImageService,
           useValue: mockUploadImageService,
-        },
-        {
-          provide: SSEService,
-          useValue: mockSSEService,
         },
       ],
     }).compile();
@@ -119,28 +105,6 @@ describe('ImagesController', () => {
 
       expect(mockImagesService.findAll).toHaveBeenCalledWith({});
       expect(result).toEqual(paginatedResult);
-    });
-  });
-
-  describe('imageEvents', () => {
-    let mockResponse: Partial<Response>;
-
-    beforeEach(() => {
-      mockResponse = {
-        setHeader: jest.fn(),
-        write: jest.fn(),
-        end: jest.fn(),
-        on: jest.fn(),
-      };
-    });
-
-    it('should setup SSE connection', () => {
-      const imageId = mockImageResponse.id;
-
-      controller.imageEvents(imageId, mockResponse as Response);
-
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('Content-Type', 'text/event-stream');
-      expect(mockSSEService.addClient).toHaveBeenCalledWith(imageId, mockResponse);
     });
   });
 });
