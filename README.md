@@ -1,98 +1,208 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Images API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Image upload and management REST API with async processing, built with NestJS.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Quick Start (Docker Compose)
 
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+The fastest way to run the full application:
 
 ```bash
-$ npm install
+docker compose --profile app up --build
 ```
 
-## Compile and run the project
+This starts **all services** automatically:
+
+| Service      | Description                          | Port |
+| ------------ | ------------------------------------ | ---- |
+| **postgres** | PostgreSQL 18 database               | 5432 |
+| **redis**    | Redis 8 (BullMQ job queue)           | 6379 |
+| **migrate**  | Runs database migrations, then exits | -    |
+| **app**      | Images API server                    | 3000 |
+
+The app waits for database and Redis health checks, runs migrations, and starts the server.
+
+Once running, the API is available at **http://localhost:3000/api**.
+
+### API Documentation
+
+OpenAPI (Swagger) docs are available at:
+
+**http://localhost:3000/api/docs**
+
+### Stop & Clean Up
 
 ```bash
-# development
-$ npm run start
+# Stop all services
+docker compose --profile app down
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+# Stop and remove volumes (wipes database and Redis data)
+docker compose --profile app down -v
 ```
 
-## Run tests
+---
+
+## Local Development
+
+### Prerequisites
+
+- Node.js 24 LTS
+- PostgreSQL
+- Redis
+
+### 1. Start Infrastructure
+
+Start only PostgreSQL and Redis using Docker Compose:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+docker compose up
 ```
 
-## Deployment
+### 2. Configure Environment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Create a `.env` file in the project root:
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+```dotenv
+# Server
+PORT=3000
+
+# Database
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/images-api?schema=public"
+
+# Storage
+STORAGE_PROVIDER=LOCAL
+STORAGE_MAX_FILE_SIZE=10485760
+STORAGE_BASE_PATH=./uploads
+STORAGE_BASE_URL=http://localhost:3000/uploads
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+```
+
+### 3. Install Dependencies & Run Migrations
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm install
+npm run migration:run
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### 4. Start Development Server
 
-## Resources
+```bash
+npm run start:dev
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+The API will be available at **http://localhost:3000/api** with Swagger docs at **http://localhost:3000/api/docs**.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+---
 
-## Support
+## S3 Storage Configuration
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+By default the API stores uploaded images on the local filesystem. To use S3-compatible storage (AWS S3, Backblaze B2, MinIO, etc.), update your `.env`:
 
-## Stay in touch
+```dotenv
+STORAGE_PROVIDER=S3
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+S3_BUCKET=your-bucket-name
+S3_REGION=us-east-1
+S3_ACCESS_KEY_ID=your-access-key
+S3_SECRET_ACCESS_KEY=your-secret-key
+```
 
-## License
+For **S3-compatible providers** (Backblaze B2, MinIO, DigitalOcean Spaces), also set:
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+```dotenv
+S3_ENDPOINT_DOMAIN=backblazeb2.com  # or your provider's domain
+```
+
+When using S3 with Docker Compose, update the environment variables in the `app` service in `docker-compose.yml` accordingly.
+
+---
+
+## API Endpoints
+
+All endpoints are prefixed with `/api`.
+
+### `POST /api/images`
+
+Upload an image with optional resizing.
+
+- **Content-Type:** `multipart/form-data`
+- **Fields:**
+  - `file` — image file (JPEG, PNG, WebP, GIF, TIFF, AVIF, BMP)
+  - `title` — image title (required, 1–255 characters)
+  - `width` — target width in pixels (optional, 1–7680)
+  - `height` — target height in pixels (optional, 1–4320)
+- **Max file size:** 10 MB (configurable)
+
+If width/height are provided, the image is processed asynchronously via a background job queue.
+
+### `GET /api/images`
+
+List images with pagination and optional filtering.
+
+- **Query parameters:**
+  - `title` — filter by title (contains, case-insensitive)
+  - `limit` — items per page (1–100, default: 20)
+  - `cursor` — pagination cursor
+  - `direction` — `next` or `prev`
+
+### `GET /api/images/:id`
+
+Get a single image by UUID.
+
+### `GET /api/images/events/:id`
+
+Server-Sent Events endpoint for real-time image processing status notifications.
+
+---
+
+## Project Structure
+
+```
+src/
+├── config/          # App configuration (env variables)
+├── database/        # Kysely database service & types
+├── images/          # Image upload, processing, and retrieval
+│   ├── controllers/ # HTTP controllers
+│   ├── dto/         # Request/response DTOs with validation
+│   ├── events/      # Domain events (ImageStored, ProcessingFailed)
+│   ├── processors/  # BullMQ job processors
+│   ├── repositories/# Database repositories
+│   └── services/    # Business logic
+├── notifications/   # SSE notifications module (event-driven)
+├── serve-static/    # Static file serving (local uploads)
+└── storage/         # File storage abstraction (Local / S3)
+
+libs/shared/         # Shared interfaces and entities
+prisma/              # Prisma schema and migrations
+test/                # E2E tests
+```
+
+---
+
+## Testing
+
+```bash
+# Unit tests
+npm test
+
+# Unit tests with coverage
+npm run test:cov
+
+# E2E tests (requires mocked dependencies)
+npm run test:e2e
+```
+
+---
+
+## Tech Stack
+
+- **Runtime:** Node.js 24 LTS
+- **Framework:** NestJS 11
+- **Database:** PostgreSQL with Prisma (migrations) + Kysely (queries)
+- **Queue:** BullMQ + Redis (async image processing)
+- **Image Processing:** Sharp
+- **Storage:** Local filesystem or S3-compatible
+- **API Docs:** OpenAPI v3 (Swagger)
+- **Testing:** Jest + Supertest
