@@ -22,7 +22,33 @@ const parseDatabase = (value: string | undefined): string => {
   return value;
 };
 
+const parseFileSize = (value: string | undefined): number => {
+  if (!value) return 10 * 1024 * 1024; // Default 10MB
+
+  const parsed = parseInt(value, 10);
+  return isNaN(parsed) ? 10 * 1024 * 1024 : parsed;
+};
+
+const parseStorageConfig = () => {
+  const basePath = process.env.STORAGE_BASE_PATH || './uploads';
+  const baseUrl = process.env.STORAGE_BASE_URL;
+
+  if (!baseUrl) {
+    console.error('ERROR: STORAGE_BASE_URL environment variable is not defined');
+    console.error('Please set STORAGE_BASE_URL in your .env file');
+    console.error('Example: STORAGE_BASE_URL=http://localhost:3000/uploads');
+    process.exit(1);
+  }
+
+  return {
+    basePath,
+    baseUrl,
+    maxFileSize: parseFileSize(process.env.STORAGE_MAX_FILE_SIZE),
+  };
+};
+
 export default () => ({
-  PORT: parsePort(process.env.PORT),
-  DATABASE_URL: parseDatabase(process.env.DATABASE_URL),
+  port: parsePort(process.env.PORT),
+  databaseUrl: parseDatabase(process.env.DATABASE_URL),
+  storage: parseStorageConfig(),
 });
