@@ -40,3 +40,6 @@ jobs:
 
       - name: Run test coverage
         run: npm run test:cov
+
+      - name: Run e2e tests
+        run: npm run test:e2e

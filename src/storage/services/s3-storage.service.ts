@@ -1,4 +1,4 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import type { File, StorageService } from '@images-api/shared/storage';
 import { calculateChecksum, FileRepository, StorageConfig, StorageProvider } from '@images-api/shared/storage';
 import { Inject, Injectable, Logger } from '@nestjs/common';
@@ -51,10 +51,12 @@ export class S3StorageService implements StorageService {
       // Calculate checksum first to check for duplicates
       const checksum = calculateChecksum(buffer);
 
-      // Check if file with same checksum already exists
-      const existingFile = await this.fileRepository.findByChecksum(checksum);
+      // Check if file with same checksum already exists in S3 storage
+      const existingFile = await this.fileRepository.findByChecksum(checksum, StorageProvider.S3);
       if (existingFile) {
-        this.logger.log(`File with checksum ${checksum} already exists, returning existing file: ${existingFile.id}`);
+        this.logger.log(
+          `File with checksum ${checksum} already exists in S3 storage, returning existing file: ${existingFile.id}`,
+        );
         return existingFile;
       }
 
@@ -104,6 +106,48 @@ export class S3StorageService implements StorageService {
       this.logger.error(`Failed to upload file to S3: ${err.message}`, err.stack);
       throw new StorageError('Failed to upload file', StorageErrorCode.UPLOAD_FAILED, err);
     }
+  }
+
+  /**
+   * Obtain a file from S3 storage.
+   */
+  async obtainFile(url: string): Promise<Buffer> {
+    try {
+      // Extract the key from URL
+      const urlObj = new URL(url);
+      const key = urlObj.pathname.substring(1); // Remove leading /
+
+      // Get object from S3
+      const command = new GetObjectCommand({
+        Bucket: this.config.s3.bucket,
+        Key: key,
+      });
+
+      const response = await this.s3Client.send(command);
+
+      // Convert stream to buffer
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of response.Body as any) {
+        chunks.push(chunk as Uint8Array);
+      }
+
+      const buffer = Buffer.concat(chunks);
+
+      this.logger.log(`File obtained successfully from S3: ${key}`);
+
+      return buffer;
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error(`Failed to obtain file from S3 ${url}: ${err.message}`, err.stack);
+      throw new StorageError('Failed to obtain file', StorageErrorCode.OBTAIN_FAILED, err);
+    }
+  }
+
+  /**
+   * Find a file by its checksum.
+   */
+  async findByChecksum(checksum: string): Promise<File | null> {
+    return this.fileRepository.findByChecksum(checksum, StorageProvider.S3);
   }
 
   /**

@@ -45,10 +45,12 @@ export class LocalStorageService implements StorageService {
       // Calculate checksum first to check for duplicates
       const checksum = calculateChecksum(buffer);
 
-      // Check if file with same checksum already exists
-      const existingFile = await this.fileRepository.findByChecksum(checksum);
+      // Check if file with same checksum already exists in LOCAL storage
+      const existingFile = await this.fileRepository.findByChecksum(checksum, StorageProvider.LOCAL);
       if (existingFile) {
-        this.logger.log(`File with checksum ${checksum} already exists, returning existing file: ${existingFile.id}`);
+        this.logger.log(
+          `File with checksum ${checksum} already exists in LOCAL storage, returning existing file: ${existingFile.id}`,
+        );
         return existingFile;
       }
 
@@ -94,6 +96,35 @@ export class LocalStorageService implements StorageService {
       this.logger.error(`Failed to upload file: ${err.message}`, err.stack);
       throw new StorageError('Failed to upload file', StorageErrorCode.UPLOAD_FAILED, err);
     }
+  }
+
+  /**
+   * Obtain a file from local storage.
+   */
+  async obtainFile(url: string): Promise<Buffer> {
+    try {
+      // Extract filename from URL
+      const fileName = path.basename(url);
+      const filePath = this.getFilePath(fileName);
+
+      // Read file from disk
+      const buffer = await fs.readFile(filePath);
+
+      this.logger.log(`File obtained successfully: ${fileName}`);
+
+      return buffer;
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error(`Failed to obtain file from ${url}: ${err.message}`, err.stack);
+      throw new StorageError('Failed to obtain file', StorageErrorCode.OBTAIN_FAILED, err);
+    }
+  }
+
+  /**
+   * Find a file by its checksum.
+   */
+  async findByChecksum(checksum: string): Promise<File | null> {
+    return this.fileRepository.findByChecksum(checksum, StorageProvider.LOCAL);
   }
 
   /**
