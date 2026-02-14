@@ -132,10 +132,11 @@ describe('SqlFileRepository', () => {
 
       mockDb.executeTakeFirst.mockResolvedValue(mockDbRow);
 
-      const result = await repository.findByChecksum(checksum);
+      const result = await repository.findByChecksum(checksum, StorageProvider.LOCAL);
 
       expect(mockDb.selectFrom).toHaveBeenCalledWith('files');
       expect(mockDb.where).toHaveBeenCalledWith('checksum', '=', checksum);
+      expect(mockDb.where).toHaveBeenCalledWith('storage_provider', '=', StorageProvider.LOCAL);
       expect(result).toEqual({
         id: 'test-uuid',
         fileName: 'test-file.jpg',
@@ -152,8 +153,23 @@ describe('SqlFileRepository', () => {
     it('should return null when file not found by checksum', async () => {
       mockDb.executeTakeFirst.mockResolvedValue(undefined);
 
-      const result = await repository.findByChecksum('non-existent-checksum');
+      const result = await repository.findByChecksum('non-existent-checksum', StorageProvider.LOCAL);
 
+      expect(result).toBeNull();
+    });
+
+    it('should not return file when checksum matches but storage provider differs', async () => {
+      const checksum = 'a'.repeat(64);
+
+      // File exists in LOCAL storage
+      mockDb.executeTakeFirst.mockResolvedValue(undefined);
+
+      // But we're searching for S3
+      const result = await repository.findByChecksum(checksum, StorageProvider.S3);
+
+      expect(mockDb.selectFrom).toHaveBeenCalledWith('files');
+      expect(mockDb.where).toHaveBeenCalledWith('checksum', '=', checksum);
+      expect(mockDb.where).toHaveBeenCalledWith('storage_provider', '=', StorageProvider.S3);
       expect(result).toBeNull();
     });
   });

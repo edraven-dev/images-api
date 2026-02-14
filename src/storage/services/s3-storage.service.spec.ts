@@ -129,7 +129,7 @@ describe('S3StorageService', () => {
 
       const result = await service.upload(mockBuffer);
 
-      expect(fileRepository.findByChecksum).toHaveBeenCalledWith(mockChecksum);
+      expect(fileRepository.findByChecksum).toHaveBeenCalledWith(mockChecksum, StorageProvider.S3);
       expect(s3ClientInstance.send).toHaveBeenCalled();
       expect(PutObjectCommand).toHaveBeenCalledWith({
         Bucket: 'test-bucket',
@@ -169,7 +169,7 @@ describe('S3StorageService', () => {
 
       const result = await service.upload(mockBuffer);
 
-      expect(fileRepository.findByChecksum).toHaveBeenCalledWith(mockChecksum);
+      expect(fileRepository.findByChecksum).toHaveBeenCalledWith(mockChecksum, StorageProvider.S3);
       expect(s3ClientInstance.send).not.toHaveBeenCalled();
       expect(fileRepository.create).not.toHaveBeenCalled();
       expect(result).toEqual(existingFile);
@@ -263,7 +263,7 @@ describe('S3StorageService', () => {
       await service.upload(mockBuffer);
 
       expect(calculateChecksum).toHaveBeenCalledWith(mockBuffer);
-      expect(fileRepository.findByChecksum).toHaveBeenCalledWith(mockChecksum);
+      expect(fileRepository.findByChecksum).toHaveBeenCalledWith(mockChecksum, StorageProvider.S3);
     });
 
     it('should generate correct S3 URL for the uploaded file', async () => {

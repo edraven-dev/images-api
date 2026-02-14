@@ -1,0 +1,20 @@
+model Image {
+  id              String   @id @default(uuid())
+  title           String
+  originalWidth   Int      @map("original_width")
+  originalHeight  Int      @map("original_height")
+  processedWidth  Int?     @map("processed_width")
+  processedHeight Int?     @map("processed_height")
+  originalFileId  String   @map("original_file_id")
+  originalFile    File     @relation(fields: [originalFileId], references: [id], onDelete: Cascade, name: "OriginalFile")
+  processedFileId String?  @map("processed_file_id")
+  processedFile   File?    @relation(fields: [processedFileId], references: [id], onDelete: Cascade, name: "ProcessedFile")
+  status          String   @default("PROCESSING")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([createdAt])
+  @@index([status])
+  @@index(fields: [title(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@map("images")
+}

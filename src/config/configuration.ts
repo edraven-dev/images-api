@@ -93,8 +93,21 @@ const parseStorageConfig = () => {
   };
 };
 
+const parseRedisConfig = () => {
+  const host = process.env.REDIS_HOST || 'localhost';
+  const port = parseInt(process.env.REDIS_PORT || '6379', 10);
+  const password = process.env.REDIS_PASSWORD;
+
+  return {
+    host,
+    port: isNaN(port) ? 6379 : port,
+    password,
+  };
+};
+
 export default () => ({
   port: parsePort(process.env.PORT),
   databaseUrl: parseDatabase(process.env.DATABASE_URL),
   storage: parseStorageConfig(),
+  redis: parseRedisConfig(),
 });

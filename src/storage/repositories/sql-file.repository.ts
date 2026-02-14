@@ -39,13 +39,23 @@ export class SqlFileRepository implements FileRepository {
   }
 
   /**
-   * Find a file by its checksum.
+   * Find a file by its ID.
    */
-  async findByChecksum(checksum: string): Promise<File | null> {
+  async findById(id: string): Promise<File | null> {
+    const file = await this.database.db.selectFrom('files').selectAll().where('id', '=', id).executeTakeFirst();
+
+    return file ? this.mapToFile(file) : null;
+  }
+
+  /**
+   * Find a file by its checksum and storage provider.
+   */
+  async findByChecksum(checksum: string, storageProvider: string): Promise<File | null> {
     const file = await this.database.db
       .selectFrom('files')
       .selectAll()
       .where('checksum', '=', checksum)
+      .where('storage_provider', '=', storageProvider)
       .executeTakeFirst();
 
     return file ? this.mapToFile(file) : null;

@@ -120,7 +120,7 @@ describe('LocalStorageService', () => {
 
       const result = await service.upload(mockBuffer);
 
-      expect(fileRepository.findByChecksum).toHaveBeenCalledWith(expect.any(String));
+      expect(fileRepository.findByChecksum).toHaveBeenCalledWith(expect.any(String), StorageProvider.LOCAL);
       expect(fs.mkdir).toHaveBeenCalledWith(expect.any(String), { recursive: true });
       expect(fs.writeFile).toHaveBeenCalledWith(expect.stringContaining(mockUuid), mockBuffer);
       expect(fileRepository.create).toHaveBeenCalledWith({
@@ -152,7 +152,7 @@ describe('LocalStorageService', () => {
 
       const result = await service.upload(mockBuffer);
 
-      expect(fileRepository.findByChecksum).toHaveBeenCalledWith(expect.any(String));
+      expect(fileRepository.findByChecksum).toHaveBeenCalledWith(expect.any(String), StorageProvider.LOCAL);
       expect(fs.mkdir).not.toHaveBeenCalled();
       expect(fs.writeFile).not.toHaveBeenCalled();
       expect(fileRepository.create).not.toHaveBeenCalled();
@@ -307,7 +307,10 @@ describe('LocalStorageService', () => {
       await service.upload(mockBuffer);
 
       // Checksum should be a 64-character hex string (SHA-256)
-      expect(fileRepository.findByChecksum).toHaveBeenCalledWith(expect.stringMatching(/^[a-f0-9]{64}$/));
+      expect(fileRepository.findByChecksum).toHaveBeenCalledWith(
+        expect.stringMatching(/^[a-f0-9]{64}$/),
+        StorageProvider.LOCAL,
+      );
     });
   });
 });

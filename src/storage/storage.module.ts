@@ -18,7 +18,7 @@ import { S3StorageService } from './services/s3-storage.service';
     },
     {
       provide: StorageService,
-      useFactory: (config: StorageConfig, fileRepository: FileRepository) => {
+      useFactory: (config: StorageConfig, fileRepository: FileRepository): StorageService => {
         switch (config.provider) {
           case StorageProvider.LOCAL:
             return new LocalStorageService(config, fileRepository);
@@ -32,5 +32,6 @@ import { S3StorageService } from './services/s3-storage.service';
       inject: [StorageConfig, FileRepository],
     },
   ],
+  exports: [StorageConfig, StorageService],
 })
 export class StorageModule {}

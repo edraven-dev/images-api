@@ -8,6 +8,8 @@ model File {
   storageProvider String   @default("LOCAL") @map("storage_provider")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
+  originalImages  Image[]  @relation("OriginalFile")
+  processedImages Image[]  @relation("ProcessedFile")
 
   @@index([checksum])
   @@map("files")
