@@ -43,13 +43,13 @@ import { ImageProcessingQueue } from '@images-api/shared/images/queues';
 import { File, StorageConfig, StorageProvider, StorageService } from '@images-api/shared/storage';
 import { getQueueToken } from '@nestjs/bullmq';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as request from 'supertest';
 import { v4 as uuidv4 } from 'uuid';
 import { ImagesController } from '../src/images/controllers/images.controller';
 import { ImageProcessingService } from '../src/images/services/image-processing.service';
 import { ImagesService } from '../src/images/services/images.service';
-import { SSEService } from '../src/images/services/sse.service';
 import { UploadImageService } from '../src/images/services/upload-image.service';
 import { createTestJPEG } from './helpers/test-images';
 
@@ -220,7 +220,7 @@ describe('ImagesController (e2e)', () => {
         ImagesService,
         UploadImageService,
         ImageProcessingService,
-        SSEService,
+        EventEmitter2,
         {
           provide: ImageRepository,
           useValue: mockImageRepository,

@@ -1,13 +1,13 @@
 import { ImageStatus } from '@images-api/shared/images';
+import { ImageProcessingFailedEvent, ImageStoredEvent } from '@images-api/shared/images/events';
+import { ImageProcessingJob, ImageProcessingQueue, ImageProcessingResult } from '@images-api/shared/images/queues';
 import { StorageService } from '@images-api/shared/storage';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Job } from 'bullmq';
-
-import { ImageProcessingJob, ImageProcessingQueue, ImageProcessingResult } from '@images-api/shared/images/queues';
 import { ImageProcessingService } from '../services/image-processing.service';
 import { ImagesService } from '../services/images.service';
-import { ImageEventType, SSEService } from '../services/sse.service';
 
 /**
  * Processor for image processing jobs.
@@ -22,7 +22,7 @@ export class ImageProcessingProcessor extends WorkerHost {
     private readonly storageService: StorageService,
     private readonly imageProcessingService: ImageProcessingService,
     private readonly imagesService: ImagesService,
-    private readonly sseService: SSEService,
+    private readonly eventEmitter: EventEmitter2,
   ) {
     super();
   }
@@ -70,17 +70,7 @@ export class ImageProcessingProcessor extends WorkerHost {
       status: ImageStatus.STORED,
     });
 
-    this.sseService
-      .sendEvent(imageId, {
-        type: ImageEventType.COMPLETED,
-        imageId,
-        message: 'Image processed successfully',
-        url: result.url,
-      })
-      .catch((error) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        this.logger.error(`Failed to send SSE event for image ${imageId}: ${error.message}`, error.stack);
-      });
+    this.eventEmitter.emit(ImageStoredEvent.eventName, new ImageStoredEvent(imageId, result.url));
   }
 
   /**
@@ -101,15 +91,9 @@ export class ImageProcessingProcessor extends WorkerHost {
       status: ImageStatus.FAILED,
     });
 
-    this.sseService
-      .sendEvent(imageId, {
-        type: ImageEventType.FAILED,
-        imageId,
-        message: error.message || 'Image processing failed',
-      })
-      .catch((err) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        this.logger.error(`Failed to send SSE event for image ${imageId}: ${err.message}`, err.stack);
-      });
+    this.eventEmitter.emit(
+      ImageProcessingFailedEvent.eventName,
+      new ImageProcessingFailedEvent(imageId, error.message || 'Image processing failed'),
+    );
   }
 }

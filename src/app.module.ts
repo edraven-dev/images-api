@@ -2,6 +2,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { Module, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_PIPE } from '@nestjs/core';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { ImagesModule } from './images/images.module';
@@ -21,6 +22,7 @@ import { ServeStaticModule } from './serve-static/server-static.module';
         },
       }),
     }),
+    EventEmitterModule.forRoot(),
     ServeStaticModule,
     ImagesModule,
   ],
