@@ -1,0 +1,16 @@
+model File {
+  id              String   @id @default(uuid())
+  fileName        String   @map("file_name")
+  fileSize        BigInt   @map("file_size")
+  mimeType        String   @map("mime_type")
+  checksum        String
+  url             String
+  storageProvider String   @default("LOCAL") @map("storage_provider")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  originalImages  Image[]  @relation("OriginalFile")
+  processedImages Image[]  @relation("ProcessedFile")
+
+  @@index([checksum])
+  @@map("files")
+}
